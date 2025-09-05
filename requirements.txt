@@ -1,0 +1,15 @@
+# Databricks Runtime dependencies are typically included
+# Additional packages that might be needed for development
+
+# Data manipulation and analysis
+pandas>=1.3.0
+numpy>=1.21.0
+
+# Date and time handling
+python-dateutil>=2.8.0
+
+# Logging and utilities
+python-json-logger>=2.0.0
+
+# Note: Most dependencies are provided by Databricks Runtime
+# This file is for local development or custom environments 

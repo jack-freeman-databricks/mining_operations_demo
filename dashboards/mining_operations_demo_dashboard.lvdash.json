@@ -1,0 +1,602 @@
+{
+  "datasets": [
+    {
+      "name": "daily_efficiency_trend",
+      "displayName": "Daily Operational Efficiency Trend",
+      "queryLines": [
+        "SELECT\n",
+        "  operation_date,\n",
+        "  active_trucks,\n",
+        "  total_events,\n",
+        "  total_operational_minutes,\n",
+        "  productive_time_percentage,\n",
+        "  breakdown_time_percentage,\n",
+        "  delay_time_percentage\n",
+        "FROM mining_operations.production.gold_daily_operational_efficiency\n",
+        "WHERE operation_date >= CURRENT_DATE - INTERVAL 30 DAYS\n",
+        "ORDER BY operation_date DESC"
+      ]
+    },
+    {
+      "name": "truck_performance_ranking",
+      "displayName": "Truck Performance Ranking",
+      "queryLines": [
+        "SELECT\n",
+        "  truck_id,\n",
+        "  truck_type,\n",
+        "  total_events,\n",
+        "  total_operational_minutes,\n",
+        "  productive_time_percentage,\n",
+        "  breakdown_time_percentage,\n",
+        "  delay_time_percentage,\n",
+        "  RANK() OVER (ORDER BY productive_time_percentage DESC) as efficiency_rank\n",
+        "FROM mining_operations.production.gold_truck_performance\n",
+        "ORDER BY productive_time_percentage DESC"
+      ]
+    },
+    {
+      "name": "efficiency_rating_distribution",
+      "displayName": "Efficiency Rating Distribution",
+      "queryLines": [
+        "SELECT\n",
+        "  efficiency_rating,\n",
+        "  COUNT(*) as event_count,\n",
+        "  SUM(duration_minutes) as total_duration_minutes,\n",
+        "  AVG(duration_minutes) as avg_duration_minutes,\n",
+        "  SUM(lost_productivity_minutes) as total_lost_minutes\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "GROUP BY efficiency_rating\n",
+        "ORDER BY \n",
+        "  CASE efficiency_rating\n",
+        "    WHEN 'Excellent' THEN 1\n",
+        "    WHEN 'Good' THEN 2\n",
+        "    WHEN 'Fair' THEN 3\n",
+        "    WHEN 'Poor' THEN 4\n",
+        "    WHEN 'Critical' THEN 5\n",
+        "  END"
+      ]
+    },
+    {
+      "name": "time_of_day_analysis",
+      "displayName": "Time of Day Efficiency Analysis",
+      "queryLines": [
+        "SELECT\n",
+        "  time_of_day,\n",
+        "  COUNT(*) as total_events,\n",
+        "  AVG(overall_efficiency_percentage) as avg_efficiency,\n",
+        "  SUM(total_duration_minutes) as total_minutes,\n",
+        "  SUM(total_effective_productive_minutes) as productive_minutes,\n",
+        "  SUM(total_lost_productivity_minutes) as lost_minutes\n",
+        "FROM mining_operations.production.gold_time_usage_efficiency_summary\n",
+        "WHERE event_date >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "GROUP BY time_of_day\n",
+        "ORDER BY \n",
+        "  CASE time_of_day\n",
+        "    WHEN 'Morning' THEN 1\n",
+        "    WHEN 'Afternoon' THEN 2\n",
+        "    WHEN 'Evening' THEN 3\n",
+        "    WHEN 'Night' THEN 4\n",
+        "  END"
+      ]
+    },
+    {
+      "name": "productivity_loss_analysis",
+      "displayName": "Productivity Loss Analysis",
+      "queryLines": [
+        "SELECT\n",
+        "  event_type,\n",
+        "  event_category,\n",
+        "  COUNT(*) as event_count,\n",
+        "  SUM(duration_minutes) as total_duration,\n",
+        "  SUM(lost_productivity_minutes) as total_lost_minutes,\n",
+        "  AVG(target_efficiency_percentage) as avg_target_efficiency,\n",
+        "  ROUND((SUM(lost_productivity_minutes) / SUM(duration_minutes)) * 100, 2) as loss_percentage\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "  AND lost_productivity_minutes > 0\n",
+        "GROUP BY event_type, event_category\n",
+        "ORDER BY total_lost_minutes DESC\n",
+        "LIMIT 15"
+      ]
+    },
+    {
+      "name": "truck_efficiency_comparison",
+      "displayName": "Truck Efficiency Comparison",
+      "queryLines": [
+        "SELECT\n",
+        "  truck_id,\n",
+        "  truck_type,\n",
+        "  productive_time_percentage,\n",
+        "  breakdown_time_percentage,\n",
+        "  delay_time_percentage,\n",
+        "  CASE \n",
+        "    WHEN productive_time_percentage >= 90 THEN 'Top Performer'\n",
+        "    WHEN productive_time_percentage >= 80 THEN 'Good Performer'\n",
+        "    WHEN productive_time_percentage >= 70 THEN 'Average Performer'\n",
+        "    ELSE 'Needs Improvement'\n",
+        "  END as performance_category\n",
+        "FROM mining_operations.production.gold_truck_performance\n",
+        "ORDER BY productive_time_percentage DESC"
+      ]
+    },
+    {
+      "name": "operational_insights",
+      "displayName": "Operational Insights Summary",
+      "queryLines": [
+        "SELECT\n",
+        "  'Total Events (7 days)' as metric_name,\n",
+        "  COUNT(*) as metric_value,\n",
+        "  'events' as unit\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  'Average Efficiency' as metric_name,\n",
+        "  ROUND(AVG(target_efficiency_percentage), 1) as metric_value,\n",
+        "  '%' as unit\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  'Total Lost Productivity' as metric_name,\n",
+        "  ROUND(SUM(lost_productivity_minutes) / 60, 1) as metric_value,\n",
+        "  'hours' as unit\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  'Critical Events' as metric_name,\n",
+        "  COUNT(*) as metric_value,\n",
+        "  'events' as unit\n",
+        "FROM mining_operations.production.gold_events_with_time_usage\n",
+        "WHERE event_timestamp_ts >= CURRENT_DATE - INTERVAL 7 DAYS\n",
+        "  AND efficiency_rating = 'Critical'"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "mining-operations-demo",
+      "displayName": "Mining Operations Efficiency Demo",
+      "layout": [
+        {
+          "widget": {
+            "name": "header_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# 🚛 Mining Operations Efficiency Dashboard## Real-time Operational Intelligence & Performance Analytics"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_metrics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "operational_insights",
+                  "fields": [
+                    {
+                      "name": "metric_name",
+                      "expression": "`metric_name`"
+                    },
+                    {
+                      "name": "metric_value",
+                      "expression": "`metric_value`"
+                    },
+                    {
+                      "name": "unit",
+                      "expression": "`unit`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "metric_name",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "Key Performance Indicator",
+                    "displayName": "KPI"
+                  },
+                  {
+                    "fieldName": "metric_value",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "Value",
+                    "displayName": "Value"
+                  },
+                  {
+                    "fieldName": "unit",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "Unit",
+                    "displayName": "Unit"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "📊 Key Performance Indicators (Last 7 Days)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 15,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "daily_efficiency_trend_chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_efficiency_trend",
+                  "fields": [
+                    {
+                      "name": "operation_date",
+                      "expression": "`operation_date`"
+                    },
+                    {
+                      "name": "productive_time_percentage",
+                      "expression": "`productive_time_percentage`"
+                    },
+                    {
+                      "name": "breakdown_time_percentage",
+                      "expression": "`breakdown_time_percentage`"
+                    },
+                    {
+                      "name": "delay_time_percentage",
+                      "expression": "`delay_time_percentage`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "operation_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "productive_time_percentage",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Efficiency %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "📈 Daily Operational Efficiency Trend (Last 30 Days)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "efficiency_rating_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "efficiency_rating_distribution",
+                  "fields": [
+                    {
+                      "name": "efficiency_rating",
+                      "expression": "`efficiency_rating`"
+                    },
+                    {
+                      "name": "event_count",
+                      "expression": "`event_count`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "event_count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Event Count"
+                },
+                "color": {
+                  "fieldName": "efficiency_rating",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Excellent",
+                        "color": "#00bf2e"
+                      },
+                      {
+                        "value": "Good",
+                        "color": "#4b8add"
+                      },
+                      {
+                        "value": "Fair",
+                        "color": "#e7c38b"
+                      },
+                      {
+                        "value": "Poor",
+                        "color": "#ff8c00"
+                      },
+                      {
+                        "value": "Critical",
+                        "color": "#da0000"
+                      }
+                    ]
+                  },
+                  "displayName": "Efficiency Rating"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "🎯 Event Efficiency Rating Distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 9,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "time_of_day_efficiency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "time_of_day_analysis",
+                  "fields": [
+                    {
+                      "name": "time_of_day",
+                      "expression": "`time_of_day`"
+                    },
+                    {
+                      "name": "avg_efficiency",
+                      "expression": "`avg_efficiency`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "histogram",
+              "encodings": {
+                "x": {
+                  "fieldName": "time_of_day",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Time of Day"
+                },
+                "y": {
+                  "fieldName": "avg_efficiency",
+                  "scale": {
+                    "type": "quantitative",
+                    "domain": {
+                      "min": 50
+                    }
+                  },
+                  "displayName": "Average Efficiency %"
+                },
+                "color": {
+                  "fieldName": "time_of_day",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Time Period"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "⏰ Efficiency by Time of Day"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "productivity_loss_heatmap",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "productivity_loss_analysis",
+                  "fields": [
+                    {
+                      "name": "event_type",
+                      "expression": "`event_type`"
+                    },
+                    {
+                      "name": "total_lost_minutes",
+                      "expression": "`total_lost_minutes`"
+                    },
+                    {
+                      "name": "loss_percentage",
+                      "expression": "`loss_percentage`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "event_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Event Type"
+                },
+                "y": {
+                  "fieldName": "total_lost_minutes",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Lost Productivity (minutes)"
+                },
+                "color": {
+                  "fieldName": "loss_percentage",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Loss %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "🔥 Top Productivity Loss Events"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 9,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "truck_performance_leaderboard",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "truck_performance_ranking",
+                  "fields": [
+                    {
+                      "name": "efficiency_rank",
+                      "expression": "`efficiency_rank`"
+                    },
+                    {
+                      "name": "truck_id",
+                      "expression": "`truck_id`"
+                    },
+                    {
+                      "name": "truck_type",
+                      "expression": "`truck_type`"
+                    },
+                    {
+                      "name": "productive_time_percentage",
+                      "expression": "`productive_time_percentage`"
+                    },
+                    {
+                      "name": "total_events",
+                      "expression": "`total_events`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "efficiency_rank",
+                    "displayName": "Rank"
+                  },
+                  {
+                    "fieldName": "truck_id",
+                    "displayName": "Truck ID"
+                  },
+                  {
+                    "fieldName": "truck_type",
+                    "displayName": "Type"
+                  },
+                  {
+                    "fieldName": "productive_time_percentage",
+                    "displayName": "Efficiency %"
+                  },
+                  {
+                    "fieldName": "total_events",
+                    "displayName": "total_events"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "🏆 Truck Performance Leaderboard"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 2,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    }
+  }
+}
